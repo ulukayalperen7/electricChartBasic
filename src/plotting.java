@@ -8,25 +8,44 @@ import javax.swing.*;
 import java.awt.*;
 
 public class plotting {
+    private static final int SIZE = 10;
+    private static final double CELL_LENGTH = 0.1;
+    private static final double K = 8.99e9;
+    private static final double CHARGE = getLastDigitCharge();
+
+    private static double getLastDigitCharge() {
+
+        String idNumber = "20220808006";
+        int lastDigit = Integer.parseInt(idNumber.substring(idNumber.length() - 1));
+        return lastDigit * 1e-9;
+    }
+
     public static void main(String[] args) {
-        double[][] potentials = calculatePotentials(10, 6e-9, 8.99e9, 0.1);
+        double[][] potentials = calculatePotentials(SIZE, CHARGE, K, CELL_LENGTH);
         JFreeChart chart2D = create2DChart(potentials);
         JFreeChart chartVvsX = createVvsXChart(potentials);
         JFreeChart chartVvsDiagonal = createVvsDiagonalChart(potentials);
+        JFreeChart chartEquipotential = createEquipotentialChart(potentials);
 
+        // Create and set up panels
         ChartPanel chartPanel2D = new ChartPanel(chart2D);
         ChartPanel chartPanelVvsX = new ChartPanel(chartVvsX);
         ChartPanel chartPanelVvsDiagonal = new ChartPanel(chartVvsDiagonal);
+        ChartPanel chartPanelEquipotential = new ChartPanel(chartEquipotential);
 
+        // Create a JFrame to hold the panels
         JFrame frame = new JFrame("Electric Potential Distribution");
-        frame.setLayout(new GridLayout(1, 3));
+        frame.setLayout(new GridLayout(2, 2));
 
+        // Add panels to the frame
         frame.add(chartPanel2D);
         frame.add(chartPanelVvsX);
         frame.add(chartPanelVvsDiagonal);
+        frame.add(chartPanelEquipotential);
 
+        // Set frame properties
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(1200, 400);
+        frame.setSize(1200, 800);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
@@ -53,9 +72,8 @@ public class plotting {
         int index = 0;
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                data[0][index] = i * 0.1; // this is x coordinate
-                data[1][index] = j * 0.1; // this is y coordinate
-                data[1][index] = potentials[i][j]; // potential
+                data[0][index] = i * CELL_LENGTH; // x coordinate
+                data[1][index] = j * CELL_LENGTH; // y coordinate
                 index++;
             }
         }
@@ -77,8 +95,8 @@ public class plotting {
         int size = potentials.length;
         double[][] data = new double[2][size - 1];
         for (int i = 1; i < size; i++) {
-            data[0][i - 1] = i * 0.1;
-            data[1][i - 1] = potentials[i][0];
+            data[0][i - 1] = i * CELL_LENGTH; // x coordinate
+            data[1][i - 1] = potentials[i][0]; // potential at (i, 0)
         }
         dataset.addSeries("Potential vs x", data);
         JFreeChart chart = ChartFactory.createXYLineChart(
@@ -98,7 +116,7 @@ public class plotting {
         int size = potentials.length;
         double[][] data = new double[2][size - 1];
         for (int i = 1; i < size; i++) {
-            data[0][i - 1] = i * 0.1 * Math.sqrt(2);
+            data[0][i - 1] = i * CELL_LENGTH * Math.sqrt(2);
             data[1][i - 1] = potentials[i][i];
         }
         dataset.addSeries("Potential vs r (Diagonal)", data);
@@ -113,4 +131,34 @@ public class plotting {
                 false);
         return chart;
     }
+
+    private static JFreeChart createEquipotentialChart(double[][] potentials) {
+        DefaultXYDataset dataset = new DefaultXYDataset();
+        int size = potentials.length;
+        for (double level = 1e9; level <= 5e9; level += 1e9) {
+            double[][] data = new double[2][size * size];
+            int index = 0;
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    if (Math.abs(potentials[i][j] - level) < 1e8) {
+                        data[0][index] = i * CELL_LENGTH;
+                        data[1][index] = j * CELL_LENGTH;
+                        index++;
+                    }
+                }
+            }
+            dataset.addSeries("Equipotential " + level, data);
+        }
+        JFreeChart chart = ChartFactory.createScatterPlot(
+                "Equipotential Lines",
+                "x (m)",
+                "y (m)",
+                dataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false);
+        return chart;
+    }
+
 }
